@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+const jsonFilePath = "~/mate_ssh.json"
+
 type ServerConfig struct {
 	BindAddr       string   `json:"bind"`
 	Port           int      `json:"port"`
@@ -24,7 +26,7 @@ func CreateConfig(fingerprint string) error {
 		return err
 	}
 
-	return os.WriteFile("~/mate_ssh.json", data, 0600)
+	return os.WriteFile(jsonFilePath, data, 0600)
 }
 
 func AddAuthorizedKey(key string) error {
@@ -40,7 +42,7 @@ func AddAuthorizedKey(key string) error {
 		return err
 	}
 
-	err = os.WriteFile("~/mate_ssh.json", data, 0600)
+	err = os.WriteFile(jsonFilePath, data, 0600)
 	if err != nil {
 		return err
 	}
@@ -49,7 +51,7 @@ func AddAuthorizedKey(key string) error {
 }
 
 func LoadConfig() (*ServerConfig, error) {
-	data, err := os.ReadFile("~/mate_ssh.json")
+	data, err := os.ReadFile(jsonFilePath)
 	if err != nil {
 		return nil, err
 	}
