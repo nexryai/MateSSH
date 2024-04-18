@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gliderlabs/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -8,41 +9,83 @@ import (
 	"log"
 )
 
-func ServeSetupWizard(initPasswordHash string) error {
+func isValidPublicKey(key string) bool {
+	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+	return err == nil
+}
+
+func ServeSetupWizard(initPassphrase string) error {
 	ssh.Handle(func(s ssh.Session) {
-		io.WriteString(s, "Please enter the init password for setup:\n")
+		var errs []error
+
+		_, e := io.WriteString(s, "<Please enter the init passphrase for setup>\n")
+		if e != nil {
+			errs = append(errs, e)
+		}
 
 		term := terminal.NewTerminal(s, "> ")
-		line := ""
+		input := ""
 
 		// Authentication loop
 		passwordTries := 0
 		for {
-			line, _ = term.ReadPassword("Enter password: ")
-			if line == "quit" {
+			input, _ = term.ReadPassword(" 🔑 Enter passphrase: ")
+			if input == initPassphrase {
 				break
 			}
 
-			io.WriteString(s, "Wrong password\n")
+			_, e = io.WriteString(s, "Wrong passphrase\n")
+			if e != nil {
+				errs = append(errs, e)
+			}
 
 			if passwordTries >= 3 {
-				io.WriteString(s, "Too many tries\n")
+				_, e = io.WriteString(s, "Too many tries\n")
+				if e != nil {
+					errs = append(errs, e)
+				}
 				return
 			} else {
 				passwordTries++
 			}
 		}
 
-		io.WriteString(s, "=======================================================\n")
-		io.WriteString(s, "Welcome to MateSSH!\n")
-		io.WriteString(s, "Please enter the SSH public key used for authentication.\n")
-		io.WriteString(s, "WARNING: If you make a mistake here, you will have to physically access the server, log in, and run the reset command. Please enter carefully!\n")
+		if errors.Join(errs...) != nil {
+			log.Fatal(errors.Join(errs...))
+			return
+		}
+
+		// Setup loop
+		welcomeMsg := fmt.Sprintf("\n=========================================\n" +
+			"Welcome to MateSSH!\n" +
+			"Please enter the SSH public key used for authentication.\n" +
+			"WARNING: If you make a mistake here, you will have to physically access the server, log in, and run the reset command. Please enter carefully!\n")
+
+		_, e = io.WriteString(s, welcomeMsg)
+		if e != nil {
+			fmt.Println(e)
+		}
+
 		for {
-			line, _ = term.ReadLine()
-			if line == "quit" {
+			input, _ = term.ReadLine()
+			if input == "quit" {
+				break
+			} else if isValidPublicKey(input) {
+				//ToDo
+				break
+			} else {
+				_, e = io.WriteString(s, "Invalid public key\n")
+				if e != nil {
+					fmt.Println(e)
+					break
+				}
+			}
+
+			_, e = io.WriteString(s, fmt.Sprintf("You wrote: %s\n", input))
+			if e != nil {
+				fmt.Println(e)
 				break
 			}
-			io.WriteString(s, fmt.Sprintf("You wrote: %s\n", line))
 		}
 	})
 
