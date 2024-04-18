@@ -83,12 +83,6 @@ func ServeSetupWizard(initPassphrase string) error {
 					break
 				}
 			}
-
-			_, e = io.WriteString(s, fmt.Sprintf("You wrote: %s\n", input))
-			if e != nil {
-				fmt.Println(e)
-				break
-			}
 		}
 	})
 
