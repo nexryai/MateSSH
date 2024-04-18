@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gliderlabs/ssh"
+	"github.com/nexryai/MateSSH/internal/hostkey"
 	"github.com/nexryai/MateSSH/internal/setup"
 	"github.com/sethvargo/go-diceware/diceware"
 	"io"
@@ -14,6 +15,13 @@ func main() {
 	configIsExist := false
 
 	if !configIsExist {
+		// Generate host key
+		hostKeyring := hostkey.Keyring{}
+		err := hostKeyring.Generate()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// Generate a passphrase
 		passPhrasesList, err := diceware.Generate(8)
 		if err != nil {
@@ -23,7 +31,7 @@ func main() {
 		initPassphrase := strings.Join(passPhrasesList, "-")
 		fmt.Println("Your init passphrase is: ", initPassphrase)
 
-		err = setup.ServeSetupWizard(initPassphrase)
+		err = setup.ServeSetupWizard(initPassphrase, hostKeyring)
 		if err != nil {
 			log.Fatal(err)
 		}

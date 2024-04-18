@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gliderlabs/ssh"
+	"github.com/nexryai/MateSSH/internal/hostkey"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"log"
@@ -15,7 +16,7 @@ func isValidPublicKey(key string) bool {
 	return err == nil
 }
 
-func ServeSetupWizard(initPassphrase string) error {
+func ServeSetupWizard(initPassphrase string, hostKeys hostkey.Keyring) error {
 	ssh.Handle(func(s ssh.Session) {
 		var errs []error
 
@@ -85,6 +86,16 @@ func ServeSetupWizard(initPassphrase string) error {
 			}
 		}
 	})
+
+	// Configure server
+	server := ssh.Server{
+		Addr: ":2222",
+	}
+
+	// Add host key
+	for _, s := range *hostKeys.Signers {
+		server.AddHostKey(s)
+	}
 
 	log.Fatal(ssh.ListenAndServe(":2222", nil))
 	return nil
