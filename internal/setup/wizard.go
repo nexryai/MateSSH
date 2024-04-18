@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"log"
+	"time"
 )
 
 func isValidPublicKey(key string) bool {
@@ -34,6 +35,8 @@ func ServeSetupWizard(initPassphrase string) error {
 				break
 			}
 
+			// Wrong passphrase
+			time.Sleep(5 * time.Second)
 			_, e = io.WriteString(s, "Wrong passphrase\n")
 			if e != nil {
 				errs = append(errs, e)
