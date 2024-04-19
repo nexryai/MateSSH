@@ -52,6 +52,24 @@ func (h *Keyring) Generate() error {
 	return nil
 }
 
+func (h *Keyring) Parse() error {
+	// Load RSA key
+	rsaKey, err := rsaPemToPrivateKey(h.HostKeyRSAPem)
+	if err != nil {
+		return err
+	}
+
+	// Load Ed25519 key
+	ed25519Key, err := ed25519PemToPrivateKey(h.HostKeyEd25519Pem)
+	if err != nil {
+		return err
+	}
+
+	h.hostKeyRSA = rsaKey
+	h.hostKeyEd25519 = ed25519Key
+	return nil
+}
+
 func (h *Keyring) GenSigners() error {
 	rsaSigner, err := gossh.NewSignerFromKey(h.hostKeyRSA)
 	if err != nil {

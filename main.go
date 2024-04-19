@@ -2,19 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/gliderlabs/ssh"
+	"github.com/nexryai/MateSSH/internal/config"
 	"github.com/nexryai/MateSSH/internal/hostkey"
+	"github.com/nexryai/MateSSH/internal/server"
 	"github.com/nexryai/MateSSH/internal/setup"
 	"github.com/sethvargo/go-diceware/diceware"
-	"io"
 	"log"
 	"strings"
 )
 
 func main() {
-	configIsExist := false
-
-	if !configIsExist {
+	if !config.IsExist() {
 		// Generate host key
 		hostKeyring := hostkey.Keyring{}
 		err := hostKeyring.Generate()
@@ -36,10 +34,6 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		ssh.Handle(func(s ssh.Session) {
-			io.WriteString(s, "Hello from MateSSH\n")
-		})
-
-		log.Fatal(ssh.ListenAndServe(":2222", nil))
+		log.Fatal(server.Start())
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gliderlabs/ssh"
+	"github.com/nexryai/MateSSH/internal/config"
 	"github.com/nexryai/MateSSH/internal/hostkey"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
@@ -17,7 +18,7 @@ func isValidPublicKey(key string) bool {
 }
 
 func ServeSetupWizard(initPassphrase string, hostKeys hostkey.Keyring) error {
-	ssh.Handle(func(s ssh.Session) {
+	setupWizard := func(s ssh.Session) {
 		var errs []error
 
 		_, e := io.WriteString(s, "<Please enter the init passphrase for setup>\n")
@@ -76,7 +77,23 @@ func ServeSetupWizard(initPassphrase string, hostKeys hostkey.Keyring) error {
 				break
 			} else if isValidPublicKey(input) {
 				//ToDo
-				break
+				err := config.CreateConfig(hostKeys, input)
+				if err != nil {
+					fmt.Println(err)
+					_, e = io.WriteString(s, "Sorry. Failed to save config.\n")
+					if e != nil {
+						fmt.Println(e)
+						break
+					}
+				} else {
+					_, e = io.WriteString(s, "Public key saved\n")
+					if e != nil {
+						fmt.Println(e)
+					}
+
+					// Exit the setup
+					break
+				}
 			} else {
 				_, e = io.WriteString(s, "Invalid public key\n")
 				if e != nil {
@@ -85,11 +102,12 @@ func ServeSetupWizard(initPassphrase string, hostKeys hostkey.Keyring) error {
 				}
 			}
 		}
-	})
+	}
 
 	// Configure server
 	server := ssh.Server{
-		Addr: ":2222",
+		Addr:    ":2222",
+		Handler: setupWizard,
 	}
 
 	// Add host key
@@ -97,6 +115,6 @@ func ServeSetupWizard(initPassphrase string, hostKeys hostkey.Keyring) error {
 		server.AddHostKey(s)
 	}
 
-	log.Fatal(ssh.ListenAndServe(":2222", nil))
+	log.Fatal(server.ListenAndServe())
 	return nil
 }

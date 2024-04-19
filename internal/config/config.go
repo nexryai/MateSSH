@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-const jsonFilePath = "~/mate_ssh.json"
+const jsonFilePath = "mate_ssh.json"
 
 type ServerConfig struct {
 	BindAddr       string          `json:"bind"`
@@ -15,10 +15,18 @@ type ServerConfig struct {
 	HostKeys       hostkey.Keyring `json:"host_keys"`
 }
 
-func CreateConfig(HostKeyring hostkey.Keyring) error {
+func IsExist() bool {
+	_, err := os.Stat(jsonFilePath)
+	return err == nil
+}
+
+func CreateConfig(HostKeyring hostkey.Keyring, AuthorizedKey string) error {
 	config := ServerConfig{
 		BindAddr: "0.0.0.0",
 		Port:     2222,
+		AuthorizedKeys: []string{
+			AuthorizedKey,
+		},
 		HostKeys: HostKeyring,
 	}
 
@@ -27,28 +35,15 @@ func CreateConfig(HostKeyring hostkey.Keyring) error {
 		return err
 	}
 
-	return os.WriteFile(jsonFilePath, data, 0600)
-}
-
-func AddAuthorizedKey(key string) error {
-	config, err := LoadConfig()
+	f, err := os.OpenFile(jsonFilePath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
 
-	config.AuthorizedKeys = append(config.AuthorizedKeys, key)
+	defer f.Close()
 
-	data, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(jsonFilePath, data, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = f.Write(data)
+	return err
 }
 
 func LoadConfig() (*ServerConfig, error) {
