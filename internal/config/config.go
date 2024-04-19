@@ -2,23 +2,24 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/nexryai/MateSSH/internal/hostkey"
 	"os"
 )
 
 const jsonFilePath = "~/mate_ssh.json"
 
 type ServerConfig struct {
-	BindAddr       string   `json:"bind"`
-	Port           int      `json:"port"`
-	AuthorizedKeys []string `json:"authorized_keys"`
-	Fingerprint    string   `json:"fingerprint"`
+	BindAddr       string          `json:"bind"`
+	Port           int             `json:"port"`
+	AuthorizedKeys []string        `json:"authorized_keys"`
+	HostKeys       hostkey.Keyring `json:"host_keys"`
 }
 
-func CreateConfig(fingerprint string) error {
+func CreateConfig(HostKeyring hostkey.Keyring) error {
 	config := ServerConfig{
-		BindAddr:    "0.0.0.0",
-		Port:        2222,
-		Fingerprint: fingerprint,
+		BindAddr: "0.0.0.0",
+		Port:     2222,
+		HostKeys: HostKeyring,
 	}
 
 	data, err := json.Marshal(config)
