@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/nexryai/MateSSH/internal/config"
 	"github.com/nexryai/MateSSH/internal/hostkey"
 	"github.com/nexryai/MateSSH/internal/logger"
@@ -11,6 +12,8 @@ import (
 )
 
 func main() {
+	fmt.Printf("Starting MateSSH server...\n\n")
+
 	log := logger.GetLogger("main")
 
 	if !config.IsExist() {
