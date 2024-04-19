@@ -5,12 +5,15 @@ import (
 	"github.com/creack/pty"
 	"github.com/gliderlabs/ssh"
 	"github.com/nexryai/MateSSH/internal/config"
+	"github.com/nexryai/MateSSH/internal/logger"
 	"io"
-	"log"
 	"os/exec"
 )
 
 func cmdPTYLinux(s ssh.Session) {
+	log := logger.GetLogger("Session")
+	log.Info(fmt.Sprintf("Session opened: %v", s.RemoteAddr()))
+
 	ptyReq, winCh, isPty := s.Pty()
 	if !isPty {
 		io.WriteString(s, "Something went wrong.\n")
@@ -22,7 +25,7 @@ func cmdPTYLinux(s ssh.Session) {
 
 	ptmx, err := pty.Start(shell)
 	if err != nil {
-		log.Printf("Failed to create pty: %v\n", err)
+		log.FatalWithDetail("Failed to create pty", err)
 		io.WriteString(s, "Failed to start shell.\n")
 		return
 	}
@@ -36,13 +39,13 @@ func cmdPTYLinux(s ssh.Session) {
 		Rows: uint16(ptyReq.Window.Height),
 		Cols: uint16(ptyReq.Window.Width),
 	})
-	log.Printf("Set TERM to %s\n", ptyReq.Term)
-	log.Printf("Starting shell: %s\n", shell.Path)
+	log.Info("Set TERM to ", ptyReq.Term)
+	log.Info("Starting shell: ", shell.Path)
 
 	done := s.Context().Done()
 	go func() {
 		<-done
-		log.Println("Session done:", s.RemoteAddr())
+		log.Info(fmt.Sprintf("Session closed: %s", s.RemoteAddr()))
 		ptmx.Close()
 	}()
 
@@ -64,25 +67,37 @@ func cmdPTYLinux(s ssh.Session) {
 }
 
 func Start() error {
+	log := logger.GetLogger("Server")
+
+	// Load configuration
+	log.ProgressInfo("Loading configuration...")
 	conf, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
 
+	log.ProgressOk()
+
+	// Create server
+	log.ProgressInfo("Creating server...")
 	handler := func(s ssh.Session) {
 		_, _ = s.Write([]byte("Hello world\n"))
-		fmt.Print("New session from ", s.RemoteAddr(), "\n")
 		cmdPTYLinux(s)
 	}
 
 	keyHandler := func(ctx ssh.Context, key ssh.PublicKey) bool {
+		log := logger.GetLogger("Auth")
+		log.Debug("Authenticating user: ", ctx.User())
+
 		for _, authorizedKey := range conf.AuthorizedKeys {
 			allowed, _, _, _, err := ssh.ParseAuthorizedKey([]byte(authorizedKey))
 			if err != nil {
+				log.Warn("Failed to parse authorized key: %v\n", err.Error())
 				continue
 			}
 
 			if ssh.KeysEqual(key, allowed) {
+				log.Info("Authorized key for user: ", ctx.User())
 				return true
 			}
 		}
@@ -112,5 +127,9 @@ func Start() error {
 		server.AddHostKey(s)
 	}
 
+	log.ProgressOk()
+	fmt.Println("")
+
+	log.Info("Server started on", server.Addr)
 	return server.ListenAndServe()
 }
